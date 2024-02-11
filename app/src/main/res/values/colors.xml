@@ -1,0 +1,8 @@
+<resources>
+	<color name="colorPrimary">#28905B</color>
+	<color name="colorPrimaryDark">#00574B</color>
+	<color name="colorAccent">#D81B60</color>
+
+	<color name="channel_num">#ffffff</color>
+	<color name="channel_name">#ffffff</color>
+</resources>

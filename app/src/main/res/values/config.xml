@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+
+    <integer name="area_setting_toast_font_size">28</integer>
+    <integer name="area_setting_toast_height">90</integer>
+    <integer name="system_density">160</integer> 
+    <integer name="dvb_notify_toast_font_size">20</integer>
+    <integer name="dvb_notify_toast_height">1</integer>
+     
+</resources>
