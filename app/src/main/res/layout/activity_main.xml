@@ -17,6 +17,31 @@
             android:layout_gravity="center"
             app:resize_mode="fill" />
 
+        <TextView
+            android:id="@+id/tv_channel_num"
+            android:layout_width="120dp"
+            android:layout_height="80dp"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textColor="@color/channel_num"
+            android:textSize="30sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tv_error"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:textColor="@color/channel_num"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <RelativeLayout
             android:id="@+id/rl_channel_list_container"
             android:layout_width="match_parent"

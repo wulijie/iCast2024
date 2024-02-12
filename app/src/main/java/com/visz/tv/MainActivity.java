@@ -1,6 +1,8 @@
 package com.visz.tv;
 
+import android.content.Context;
 import android.graphics.Rect;
+import android.media.AudioManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -96,7 +98,6 @@ public class MainActivity extends AppCompatActivity {
         channelAdapter = new ChannelAdapter(binding.rvChannelList);
         binding.rvChannelList.setAdapter(channelAdapter);
         binding.rvChannelList.addItemDecoration(new ChannelItemDecoration(10));
-
         binding.rvChannelList.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
@@ -126,8 +127,10 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onPlayerError(PlaybackException error) {
+            public void onPlayerError(@NonNull PlaybackException error) {
                 LogUtil.e("PlaybackException " + error);
+                binding.tvError.setText(String.format(getResources().getString(R.string.msg_play_error), error.getLocalizedMessage()));
+                binding.tvError.setVisibility(View.VISIBLE);
             }
         });
     }
@@ -174,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (binding.rvChannelList.getVisibility() == View.VISIBLE) {
+        if (binding.rlChannelListContainer.getVisibility() == View.VISIBLE) {
             hideChannelList();
         } else {
             if (System.currentTimeMillis() - lastBackTime > 2000) {
@@ -223,6 +226,10 @@ public class MainActivity extends AppCompatActivity {
             player.setMediaItem(mediaItemList.get(index));
             player.prepare();
             lastPlayIndex = index;
+            binding.tvChannelNum.setText(channelList.get(index).num);
+            binding.tvChannelNum.setVisibility(View.VISIBLE);
+            binding.tvError.setVisibility(View.GONE);
+            resetHideTimeout();
         }
     }
 
@@ -288,20 +295,17 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull ChannelAdapter.ChannelHolder holder, int position) {
             ChannelItem channelItem = (ChannelItem) holder.itemView;
-            if (position < channelList.size()) {
-                channelItem.binding.setChannel(channelList.get(position));
-            }
-            if (position < mediaItemList.size()) {
-                channelItem.setOnClickListener(mOnClickListener);
-            }
-            if (lastPlayIndex == position) {
+            int pos = position % channelList.size();//为了循环
+            channelItem.binding.setChannel(channelList.get(pos));
+            channelItem.setOnClickListener(mOnClickListener);
+            if (pos == lastPlayIndex) {
                 channelItem.binding.llChannelItemContainer.requestFocus();
             }
         }
 
         @Override
         public int getItemCount() {
-            return mediaItemList.size();
+            return Integer.MAX_VALUE;
         }
 
         class ChannelHolder extends RecyclerView.ViewHolder {
@@ -328,7 +332,8 @@ public class MainActivity extends AppCompatActivity {
         channelAdapter.notifyDataSetChanged();
         LogUtil.i("showChannelList :" + lastPlayIndex);
         if (linearLayoutManager != null) {
-            linearLayoutManager.scrollToPosition(lastPlayIndex);
+            int pos = Integer.MAX_VALUE / 2 - (Integer.MAX_VALUE / 2) % channelList.size() + lastPlayIndex;
+            linearLayoutManager.scrollToPosition(pos);
         }
         binding.rlChannelListContainer.setVisibility(View.VISIBLE);
         Animation anim = AnimationUtils.loadAnimation(this, R.anim.channel_up_in);
@@ -354,6 +359,7 @@ public class MainActivity extends AppCompatActivity {
     public void hideChannelList() {
         Animation anim = AnimationUtils.loadAnimation(this, R.anim.channel_down_out);
         binding.rvChannelList.startAnimation(anim);
+        binding.tvChannelNum.setVisibility(View.GONE);
         anim.setAnimationListener(new Animation.AnimationListener() {
             @Override
             public void onAnimationStart(Animation arg0) {
@@ -410,18 +416,25 @@ public class MainActivity extends AppCompatActivity {
         public boolean onFling(@Nullable MotionEvent e1, @NonNull MotionEvent e2, float velocityX, float velocityY) {
             LogUtil.d("onFling：" + velocityX + "," + velocityY);
             if (Math.abs(velocityX) < Math.abs(velocityY)) {
-                return true;
-            }
-            if (velocityX > 0) {
-                if (binding.rlChannelListContainer.getVisibility() != View.VISIBLE) {
-                    lastPlayIndex--;
-                    play(lastPlayIndex);
+                AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (velocityY < 0) {
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_PLAY_SOUND);
                 }
-            }
-            if (velocityX < 0) {
-                if (binding.rlChannelListContainer.getVisibility() != View.VISIBLE) {
-                    lastPlayIndex++;
-                    play(lastPlayIndex);
+                if (velocityY > 0) {
+                    audioManager.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_PLAY_SOUND);
+                }
+            } else {
+                if (velocityX > 0) {
+                    if (binding.rlChannelListContainer.getVisibility() != View.VISIBLE) {
+                        lastPlayIndex--;
+                        play(lastPlayIndex);
+                    }
+                }
+                if (velocityX < 0) {
+                    if (binding.rlChannelListContainer.getVisibility() != View.VISIBLE) {
+                        lastPlayIndex++;
+                        play(lastPlayIndex);
+                    }
                 }
             }
             return true;
