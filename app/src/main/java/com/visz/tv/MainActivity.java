@@ -31,8 +31,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.visz.tv.databinding.ActivityMainBinding;
-import com.visz.tv.utils.LogUtil;
 import com.visz.tv.utils.ChannelUtil;
+import com.visz.tv.utils.LogUtil;
 import com.visz.tv.utils.SharePref;
 
 import java.util.ArrayList;
@@ -131,6 +131,7 @@ public class MainActivity extends AppCompatActivity {
                 LogUtil.e("PlaybackException " + error);
                 binding.tvError.setText(String.format(getResources().getString(R.string.msg_play_error), error.getLocalizedMessage()));
                 binding.tvError.setVisibility(View.VISIBLE);
+                playBackup();
             }
         });
     }
@@ -230,6 +231,28 @@ public class MainActivity extends AppCompatActivity {
             binding.tvChannelNum.setVisibility(View.VISIBLE);
             binding.tvError.setVisibility(View.GONE);
             resetHideTimeout();
+        }
+    }
+
+    private void playBackup() {
+        if (lastPlayIndex >= 0 && lastPlayIndex < channelList.size()) {
+            Channel channel = channelList.get(lastPlayIndex);
+            if (channel.backupUrl != null && channel.backupUrl.size() > 0) {
+                int cur = -1;
+                for (int i = 0; i < channel.backupUrl.size(); i++) {
+                    if (channel.url.equals(channel.backupUrl.get(i))) {
+                        cur = i;
+                    }
+                }
+                if (cur < channel.backupUrl.size() - 1) {
+                    String url = channel.backupUrl.get(cur + 1);
+                    channel.url = url;
+                    LogUtil.i(url);
+                    mediaItemList.remove(lastPlayIndex);
+                    mediaItemList.add(lastPlayIndex, MediaItem.fromUri(url));
+                    play(lastPlayIndex);
+                }
+            }
         }
     }
 

@@ -4,7 +4,11 @@ Android IPTV 播放器
 
 ## 使用
 
-**有IPV6和IPV4两个版本：**
+  
+**CNTV 版本**
+国内电视频道
+直播源是从 https://m3u.vodtv.cn/ 获取，保存在 res/raw/cntv_channels.json
+
 **IPV6 版本：**
 手机上播放正常，电视或盒子可能不正常。
 

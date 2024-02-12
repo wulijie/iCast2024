@@ -74,15 +74,17 @@ android {
 //            dimension "default"
 //            applicationId "com.visz.tv"
 //        }
+        CNTV {
+            dimension "default"
+            applicationId "com.visz.tv"
+        }
         IPV6 {
             dimension "default"
             applicationId "com.visz.tv"
-            buildConfigField "boolean", "IS_IPV6", "true"
         }
         IPV4 {
             dimension "default"
             applicationId "com.visz.tv"
-            buildConfigField "boolean", "IS_IPV6", "false"
         }
     }
 

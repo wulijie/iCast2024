@@ -7,13 +7,19 @@ import com.visz.tv.BuildConfig;
 import com.visz.tv.Channel;
 import com.visz.tv.R;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 
 public class ChannelUtil {
     private static String IPV6_CHANNEL = "CCTV-1 综合,http://[2409:8087:7000:20:1000::22]:6060/yinhe/2/ch00000090990000001331/index.m3u8?virtualDomain=yinhe.live_hls.zte.com\n" +
@@ -249,11 +255,14 @@ public class ChannelUtil {
             "CGTN 纪录频道,https://livedoc.cgtn.com/500d/prog_index.m3u8";
 
     public static List<Channel> getChannelList(Context context) {
-        if (BuildConfig.IS_IPV6) {
-//            return parseM3U2ChannelList(readM3UFile(context));
+        if (BuildConfig.FLAVOR.equals("IPV6")) {
             return parseString2ChannelList(IPV6_CHANNEL);
-        } else {
+        } else if (BuildConfig.FLAVOR.equals("IPV4")) {
             return parseString2ChannelList(IPV4_CHANNEL);
+        } else if (BuildConfig.FLAVOR.equals("CNTV")) {
+            return getCNTVChannelList(context, R.raw.cntv_channels);
+        } else {
+            return new ArrayList<>();
         }
     }
 
@@ -278,10 +287,10 @@ public class ChannelUtil {
         return channels;
     }
 
-    public static String readM3UFile(Context context) {
+    public static String readRaw(Context context, int resId) {
         StringBuilder content = new StringBuilder();
         Resources resources = context.getResources();
-        try (InputStream is = resources.openRawResource(R.raw.ipv6_channels);
+        try (InputStream is = resources.openRawResource(resId);
              BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -328,6 +337,35 @@ public class ChannelUtil {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+        return channels;
+    }
+
+    public static List<Channel> getCNTVChannelList(Context context, int resId) {
+        List<Channel> channels = new ArrayList<>();
+        try {
+            JSONObject json = new JSONObject(readRaw(context, resId));
+            JSONObject source = json.getJSONObject("sources");
+            int num = 1;
+            for (Iterator<String> it = source.keys(); it.hasNext(); ) {
+                String ch = it.next();
+                JSONArray array = source.getJSONArray(ch);
+                if (array.length() > 0) {
+                    Channel channel = new Channel();
+                    channel.url = array.getString(0).replace("https", "http");
+                    channel.name = ch.replace(" ", "\n");
+                    channel.num = String.format(Locale.getDefault(), "%03d", num);
+                    for (int i = 0; i < array.length(); i++) {
+                        channel.backupUrl.add(array.getString(i));
+                    }
+                    channels.add(channel);
+                    LogUtil.i(channel.name.replace("\n", " ") + "," + channel.backupUrl.toString());
+                    num++;
+                }
+
+            }
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
         }
         return channels;
     }
