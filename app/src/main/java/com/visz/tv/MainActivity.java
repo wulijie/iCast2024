@@ -37,6 +37,7 @@ import com.visz.tv.utils.SharePref;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
@@ -49,7 +50,8 @@ public class MainActivity extends AppCompatActivity {
     private @Nullable ExoPlayer player;
     private @Nullable ChannelAdapter channelAdapter;
     private @Nullable LinearLayoutManager linearLayoutManager;
-    private int lastPlayIndex = 0;
+    private int lastPlayIndex = -1;
+    private int curPlayIndex = -1;
     private long lastBackTime = 0;
     private String LAST_PLAY_INDEX = "lastPlayIndex";
     private float aspectRatio = 16f / 9f;
@@ -73,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().getDecorView().setSystemUiVisibility(View.GONE);
         binding = DataBindingUtil.setContentView(MainActivity.this, R.layout.activity_main);
         initData();
         initView();
@@ -114,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
 
         binding.playerView.getPlayer().addListener(new Player.Listener() {
             @Override
-            public void onVideoSizeChanged(VideoSize videoSize) {
+            public void onVideoSizeChanged(@NonNull VideoSize videoSize) {
                 float ratio = (float) binding.playerView.getMeasuredWidth() / binding.playerView.getMeasuredHeight();
                 ViewGroup.LayoutParams layoutParams = binding.playerView.getLayoutParams();
                 if (ratio < aspectRatio) {
@@ -123,6 +126,13 @@ public class MainActivity extends AppCompatActivity {
                 } else if (ratio > aspectRatio) {
                     layoutParams.width = (int) (binding.playerView.getMeasuredHeight() * aspectRatio);
                     binding.playerView.setLayoutParams(layoutParams);
+                }
+            }
+
+            @Override
+            public void onIsPlayingChanged(boolean isPlaying) {
+                if (isPlaying) {
+                    binding.tvError.setVisibility(View.GONE);
                 }
             }
 
@@ -203,11 +213,9 @@ public class MainActivity extends AppCompatActivity {
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_ENTER) {
                 showChannelList();
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                lastPlayIndex++;
-                play(lastPlayIndex);
+                play(lastPlayIndex + 1);
             } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                lastPlayIndex--;
-                play(lastPlayIndex);
+                play(lastPlayIndex - 1);
             }
         } else {
             if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_ENTER) {
@@ -223,10 +231,16 @@ public class MainActivity extends AppCompatActivity {
     private void play(int index) {
         index += mediaItemList.size();
         index %= mediaItemList.size();
+        if (curPlayIndex == index) {
+            playBackup();
+            return;
+        }
         if (player != null && index >= 0 && index < mediaItemList.size()) {
             player.setMediaItem(mediaItemList.get(index));
             player.prepare();
             lastPlayIndex = index;
+            curPlayIndex = index;
+            SharePref.put(this, LAST_PLAY_INDEX, lastPlayIndex);
             binding.tvChannelNum.setText(channelList.get(index).num);
             binding.tvChannelNum.setVisibility(View.VISIBLE);
             binding.tvError.setVisibility(View.GONE);
@@ -245,12 +259,22 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 if (cur < channel.backupUrl.size() - 1) {
-                    String url = channel.backupUrl.get(cur + 1);
+                    cur++;
+                    String url = channel.backupUrl.get(cur);
                     channel.url = url;
                     LogUtil.i(url);
                     mediaItemList.remove(lastPlayIndex);
                     mediaItemList.add(lastPlayIndex, MediaItem.fromUri(url));
-                    play(lastPlayIndex);
+                    if (player != null) {
+                        player.setMediaItem(mediaItemList.get(lastPlayIndex));
+                        player.prepare();
+                        binding.tvChannelNum.setText(channelList.get(lastPlayIndex).num);
+                        binding.tvChannelNum.setVisibility(View.VISIBLE);
+                        binding.tvError.setVisibility(View.GONE);
+                        resetHideTimeout();
+                    }
+                    binding.tvError.setText(String.format(Locale.getDefault(), getResources().getString(R.string.msg_play_backup), cur + 1, channel.backupUrl.size()));
+                    binding.tvError.setVisibility(View.VISIBLE);
                 }
             }
         }
@@ -289,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
 
     class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ChannelHolder> {
         private RecyclerView recyclerView;
-        private View.OnClickListener mOnClickListener = view -> {
+        private final View.OnClickListener mOnClickListener = view -> {
             resetHideTimeout();
             if (view instanceof ChannelItem) {
                 ChannelItem item = (ChannelItem) view;
@@ -449,14 +473,12 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 if (velocityX > 0) {
                     if (binding.rlChannelListContainer.getVisibility() != View.VISIBLE) {
-                        lastPlayIndex--;
-                        play(lastPlayIndex);
+                        play(lastPlayIndex - 1);
                     }
                 }
                 if (velocityX < 0) {
                     if (binding.rlChannelListContainer.getVisibility() != View.VISIBLE) {
-                        lastPlayIndex++;
-                        play(lastPlayIndex);
+                        play(lastPlayIndex + 1);
                     }
                 }
             }
